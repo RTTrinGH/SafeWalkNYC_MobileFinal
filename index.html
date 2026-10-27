@@ -1,0 +1,2653 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>SafeWalkNYC</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  </head>
+  <body>
+    <header class="header">
+      <div class="header-left">
+        <!-- Blue origin dot, a dotted run, orange destination. -->
+        <svg
+          class="brand-mark"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle class="brand-origin" cx="5" cy="18.5" r="3.2" stroke-width="2.4" />
+          <path
+            class="brand-path"
+            d="M6 14.6C7.3 9.4 10.5 10.6 14.4 6.4"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-dasharray="0.01 3.8"
+          />
+          <rect class="brand-dest" x="14.6" y="1.6" width="7.8" height="7.8" rx="2.4" />
+        </svg>
+        <h1>SafeWalk<span class="brand-city">NYC</span></h1>
+      </div>
+
+      <div class="header-right">
+        <div class="route-info" id="routeInfo">
+          <div class="safety-score">
+            <span class="safety-badge" id="safetyBadge">Low Risk</span>
+            <span class="walking-time" id="walkingTime">12 min walk</span>
+            <span class="crime-count" id="crimeCount"></span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="theme-btn"
+          aria-label="Switch to night colours"
+          aria-pressed="false"
+        >
+          <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true">
+            <path
+              class="theme-moon"
+              d="M16.3 12.6A7 7 0 0 1 7.4 3.7a7 7 0 1 0 8.9 8.9Z"
+              fill="currentColor"
+            />
+            <g class="theme-sun" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <circle cx="10" cy="10" r="3.4" />
+              <path d="M10 1.6v1.8M10 16.6v1.8M18.4 10h-1.8M3.4 10H1.6M15.9 4.1l-1.3 1.3M5.4 14.6l-1.3 1.3M15.9 15.9l-1.3-1.3M5.4 5.4 4.1 4.1" />
+            </g>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="map"></div>
+
+    <div class="sidebar-panel">
+      <section class="control-panel">
+        <div class="route-form-intro">
+          <h2 class="route-form-title">Plan a walk</h2>
+          <p class="route-form-description">
+            Tell us where you're headed. We'll compare the ways to get there
+            against recent incident data and point you to the safest one.
+          </p>
+        </div>
+
+        <div class="field-stack">
+          <div class="input-group">
+            <label for="startAddress">From</label>
+            <div class="input-with-action">
+              <input
+                type="text"
+                id="startAddress"
+                placeholder="Times Square"
+                autocomplete="off"
+                aria-autocomplete="list"
+                aria-controls="startSuggestions"
+                aria-expanded="false"
+              />
+              <button
+                type="button"
+                class="locate-btn"
+                aria-label="Use my current location"
+                title="Use my current location"
+              >
+                <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                  <circle cx="10" cy="10" r="3.2" fill="currentColor" />
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="6.4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+                  <path
+                    d="M10 1v2.2M10 16.8V19M19 10h-2.2M3.2 10H1"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div
+              class="address-suggestions"
+              id="startSuggestions"
+              role="listbox"
+            ></div>
+          </div>
+
+          <div class="input-group end-location">
+            <label for="endAddress">To</label>
+            <input
+              type="text"
+              id="endAddress"
+              placeholder="Central Park"
+              autocomplete="off"
+              aria-autocomplete="list"
+              aria-controls="endSuggestions"
+              aria-expanded="false"
+            />
+            <div
+              class="address-suggestions"
+              id="endSuggestions"
+              role="listbox"
+            ></div>
+          </div>
+        </div>
+
+        <div class="when-field">
+          <span class="when-label">Leaving</span>
+          <div class="when-chips" role="group" aria-label="Departure time">
+            <button
+              type="button"
+              class="when-chip active"
+              data-when="now"
+              aria-pressed="true"
+            >
+              Now
+            </button>
+            <button
+              type="button"
+              class="when-chip"
+              data-when="night"
+              aria-pressed="false"
+            >
+              Tonight
+            </button>
+            <button
+              type="button"
+              class="when-chip"
+              data-when="custom"
+              aria-pressed="false"
+            >
+              Pick a time
+            </button>
+            <input
+              type="time"
+              id="customTime"
+              class="when-time"
+              value="22:00"
+              aria-label="Departure time"
+              hidden
+            />
+          </div>
+          <p class="when-hint" id="whenHint"></p>
+        </div>
+
+        <button type="button" class="route-btn">
+          <span>Find routes</span>
+          <span class="route-btn-arrow" aria-hidden="true">&rarr;</span>
+        </button>
+      </section>
+
+      <section class="navigation-panel">
+        <div class="navigation-header">
+          <div class="navigation-title">Directions</div>
+          <div class="nav-actions">
+            <button
+              type="button"
+              class="collapse-nav"
+              aria-label="Collapse directions"
+            >
+              Collapse
+            </button>
+            <button type="button" class="close-nav" aria-label="Clear route">
+              &times;
+            </button>
+          </div>
+        </div>
+        <div class="nav-now" id="navNow" hidden>
+          <div class="nav-now-main">
+            <div class="nav-now-icon" aria-hidden="true"></div>
+            <div class="nav-now-text">
+              <div class="nav-now-instruction">Head out</div>
+              <div class="nav-now-distance"></div>
+            </div>
+          </div>
+          <div class="nav-progress" role="presentation">
+            <div class="nav-progress-bar" id="navProgressBar"></div>
+          </div>
+          <div class="nav-progress-text" id="navProgressText"></div>
+        </div>
+
+        <div class="safety-actions">
+          <button type="button" class="safety-action haven-btn">
+            <span class="safety-action-icon" aria-hidden="true">&#9873;</span>
+            Nearest safe place
+          </button>
+          <button type="button" class="safety-action share-btn">
+            <span class="safety-action-icon" aria-hidden="true">&#8599;</span>
+            Share my walk
+          </button>
+          <a class="safety-action call-btn" href="tel:911">
+            <span class="safety-action-icon" aria-hidden="true">&#9742;</span>
+            911
+          </a>
+        </div>
+
+        <div class="route-selector" id="routeSelector"></div>
+        <ul class="navigation-list" id="navigationList"></ul>
+      </section>
+
+      <div class="route-legend">
+        <div class="route-legend-title">Legend</div>
+        <div class="route-legend-items">
+          <div class="route-legend-item route-legend-route">
+            <span class="route-legend-swatch"></span>
+            <span>Selected route</span>
+          </div>
+          <div class="route-legend-item">
+            <span class="route-legend-dot"></span>
+            <span>Open 24h: police, ER, subway, fire</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="recenter-btn" hidden>
+      <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true">
+        <circle cx="10" cy="10" r="3.2" fill="currentColor" />
+        <circle cx="10" cy="10" r="6.4" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <path d="M10 1v2.2M10 16.8V19M19 10h-2.2M3.2 10H1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+      Recenter
+    </button>
+
+    <div class="location-status" id="locationStatus">GPS active</div>
+    <script>
+      let map, markers, crimeLayer;
+      let userLocationMarker, watchId;
+      let navigationSteps = [],
+        currentStepIndex = 0;
+      let routeCoordinates = [];
+      let isNavigating = false; // Track if we're currently navigating a route
+      let currentCrimeData = [];
+      let allRoutes = []; // Array of processed route data
+      let activeRouteIndex = 0; // Current active route index
+      let routePolylines = []; // Leaflet polyline references
+      let safeHavens = []; // Places open around the clock, loaded once
+      let havenLayer; // Markers for the havens near the current route
+      let offRouteStrikes = 0; // Consecutive fixes away from the path
+      let offRouteWarned = false;
+      let crimeDataAvailable = true; // False when the incident feed fails
+      // The newest date the feed holds, and how wide a window we pulled. Both
+      // come from the proxy; scoring is judged against these rather than the
+      // wall clock, because the dataset publishes a quarter behind.
+      let crimeReferenceMs = Date.now();
+      let crimeWindowDays = 45;
+      let followUser = true; // Keep the map on you while you walk
+      let turnMarker; // Highlights the turn you are walking towards
+
+      /* --- When are you walking? ------------------------------------------
+       * Risk is not a property of a street, it is a property of a street at
+       * an hour. Everything downstream reads from this.
+       */
+      let departureChoice = "now"; // "now" | "night" | a "HH:MM" string
+
+      function departureDate() {
+        const now = new Date();
+        if (departureChoice === "now") return now;
+
+        const when = new Date(now);
+        if (departureChoice === "night") {
+          when.setHours(22, 0, 0, 0);
+          if (when < now) when.setDate(when.getDate() + 1);
+          return when;
+        }
+
+        const [h, m] = String(departureChoice).split(":").map(Number);
+        if (!Number.isFinite(h)) return now;
+        when.setHours(h, m || 0, 0, 0);
+        // A time already past today means you mean tomorrow.
+        if (when < now) when.setDate(when.getDate() + 1);
+        return when;
+      }
+
+      function departureHour() {
+        return departureDate().getHours();
+      }
+
+      function formatClock(date) {
+        return date.toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+      }
+
+      function arrivalTime(walkMinutes) {
+        const arrive = new Date(departureDate().getTime() + walkMinutes * 60000);
+        return formatClock(arrive);
+      }
+
+      function walkMinutes(distanceMetres) {
+        // 5 km/h is the usual planning figure for an adult on flat pavement.
+        // Only used where there is no routed time, such as "how far is that
+        // safe place from here".
+        return Math.round((distanceMetres / 1000 / 5) * 60);
+      }
+
+      // The router already accounts for crossings and steps, so prefer its
+      // figure over a flat speed estimate.
+      function routeMinutes(route) {
+        if (route && Number.isFinite(route.duration) && route.duration > 0) {
+          return Math.max(1, Math.round(route.duration / 60));
+        }
+        return Math.max(1, walkMinutes(route ? route.distance : 0));
+      }
+
+      function isAfterDark(hour) {
+        return hour >= 20 || hour < 6;
+      }
+
+      function initMap() {
+        // Zoom sits top-right: the left edge of the map is covered by the rail.
+        map = L.map("map", { zoomControl: false }).setView([40.7128, -74.006], 13);
+        L.control.zoom({ position: "topright" }).addTo(map);
+        // Keyless OSM tiles, muted in CSS (see .leaflet-tile) so the city
+        // stays warm but never competes with the route.
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(map);
+
+        markers = L.layerGroup().addTo(map);
+        crimeLayer = L.layerGroup().addTo(map);
+        havenLayer = L.layerGroup().addTo(map);
+
+        // Safe places are always on the map, redrawn for wherever you look.
+        map.on("moveend zoomend", scheduleHavenRender);
+        map.on("dragstart", () => {
+          if (!isNavigating) return;
+          followUser = false;
+          updateRecenterButton();
+        });
+        loadSafeHavens().then(renderHavensInView);
+        L.control
+          .scale({ position: "bottomright", metric: false, imperial: true })
+          .addTo(map);
+      }
+
+      function showMessage(message, type = "info") {
+        // Messages share one stack so overlapping ones queue instead of
+        // landing on top of each other.
+        let stack = document.querySelector(".message-stack");
+        if (!stack) {
+          stack = document.createElement("div");
+          stack.className = "message-stack";
+          document.body.appendChild(stack);
+        }
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
+        stack.appendChild(messageDiv);
+        setTimeout(() => messageDiv.remove(), 5000);
+      }
+
+      function shortPlaceName(item) {
+        const a = item.address || {};
+
+        // `name` is what the place is actually called. Fall back to the street
+        // address, then to the first component of the long display name.
+        const street =
+          a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road;
+        const primary =
+          (item.name || "").trim() ||
+          street ||
+          (item.display_name || "").split(",")[0].trim();
+
+        /*
+         * Neighbourhood then borough: enough to tell two "Main Street" results
+         * apart without reciting the county, the postcode and the country.
+         * city_district is deliberately skipped - in New York it comes back as
+         * "Manhattan Community Board 5", an administrative unit nobody
+         * navigates by.
+         */
+        const isAdministrative = (part) =>
+          /community (board|district)|county|^city of /i.test(part);
+
+        const secondary = [
+          street && street !== primary ? street : null,
+          a.neighbourhood || a.quarter,
+          a.suburb || a.borough || a.town,
+        ]
+          .filter(Boolean)
+          .filter((part) => !isAdministrative(part) && part !== primary)
+          .filter((part, i, all) => all.indexOf(part) === i)
+          .slice(0, 2)
+          .join(", ");
+
+        return { primary: String(primary), secondary };
+      }
+
+      async function fetchAddressSuggestions(query, signal) {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}, NYC&format=json&limit=6&bounded=1&viewbox=-74.5,40.4,-73.7,40.9&addressdetails=1`,
+          { signal },
+        );
+
+        if (!response.ok) throw new Error("Address search failed");
+
+        const results = await response.json();
+        const seen = new Set();
+        return results.filter((result) => {
+          if (!result.display_name) return false;
+          const name = shortPlaceName(result);
+          const key = [
+            name.primary.toLowerCase(),
+            Number(result.lat).toFixed(3),
+            Number(result.lon).toFixed(3),
+          ].join("|");
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+
+      function setupAddressAutocomplete(inputId, suggestionsId) {
+        const input = document.getElementById(inputId);
+        const suggestionsEl = document.getElementById(suggestionsId);
+        if (!input || !suggestionsEl) return;
+
+        let suggestions = [];
+        let activeIndex = -1;
+        let debounceTimer;
+        let controller;
+
+        function setMenuVisible(isVisible) {
+          suggestionsEl.classList.toggle("active", isVisible);
+          input.setAttribute("aria-expanded", String(isVisible));
+        }
+
+        function clearSuggestions() {
+          suggestions = [];
+          activeIndex = -1;
+          suggestionsEl.innerHTML = "";
+          setMenuVisible(false);
+        }
+
+        function renderSuggestions(items) {
+          suggestionsEl.innerHTML = "";
+
+          if (!items.length) {
+            const empty = document.createElement("div");
+            empty.className = "address-suggestion muted";
+            empty.textContent = "No NYC addresses found";
+            suggestionsEl.appendChild(empty);
+            setMenuVisible(true);
+            return;
+          }
+
+          items.forEach((item, index) => {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.className = "address-suggestion";
+            option.id = `${suggestionsId}-option-${index}`;
+            option.setAttribute("role", "option");
+            option.setAttribute("aria-selected", "false");
+            const name = shortPlaceName(item);
+            option.innerHTML =
+              `<span class="suggestion-name">${escapeHtml(name.primary)}</span>` +
+              (name.secondary
+                ? `<span class="suggestion-area">${escapeHtml(name.secondary)}</span>`
+                : "");
+            option.title = item.display_name;
+            option.addEventListener("mousedown", (event) => {
+              event.preventDefault();
+              selectSuggestion(index);
+            });
+            suggestionsEl.appendChild(option);
+          });
+
+          setMenuVisible(true);
+        }
+
+        function updateActiveSuggestion(nextIndex) {
+          const options = suggestionsEl.querySelectorAll(".address-suggestion");
+          activeIndex = nextIndex;
+
+          options.forEach((option, index) => {
+            const isActive = index === activeIndex;
+            option.classList.toggle("active", isActive);
+            option.setAttribute("aria-selected", String(isActive));
+          });
+
+          if (activeIndex >= 0) {
+            input.setAttribute(
+              "aria-activedescendant",
+              `${suggestionsId}-option-${activeIndex}`,
+            );
+            options[activeIndex]?.scrollIntoView({ block: "nearest" });
+          } else {
+            input.removeAttribute("aria-activedescendant");
+          }
+        }
+
+        function selectSuggestion(index) {
+          const selected = suggestions[index];
+          if (!selected) return;
+
+          const name = shortPlaceName(selected);
+          input.value = name.secondary
+            ? `${name.primary}, ${name.secondary}`
+            : name.primary;
+          input.dataset.lat = selected.lat;
+          input.dataset.lng = selected.lon;
+          input.dataset.address = input.value;
+          clearSuggestions();
+        }
+
+        input.addEventListener("input", () => {
+          delete input.dataset.lat;
+          delete input.dataset.lng;
+          delete input.dataset.address;
+          window.clearTimeout(debounceTimer);
+
+          const query = input.value.trim();
+          if (query.length < 3) {
+            clearSuggestions();
+            return;
+          }
+
+          debounceTimer = window.setTimeout(async () => {
+            controller?.abort();
+            controller = new AbortController();
+
+            try {
+              suggestions = await fetchAddressSuggestions(
+                query,
+                controller.signal,
+              );
+              activeIndex = -1;
+              renderSuggestions(suggestions);
+            } catch (error) {
+              if (error.name !== "AbortError") {
+                console.error("Address suggestion error:", error);
+                clearSuggestions();
+              }
+            }
+          }, 300);
+        });
+
+        input.addEventListener("keydown", (event) => {
+          const menuIsOpen = suggestionsEl.classList.contains("active");
+
+          if (event.key === "Enter" && (!menuIsOpen || activeIndex < 0)) {
+            findRoute();
+            return;
+          }
+
+          if (!menuIsOpen || !suggestions.length) return;
+
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            updateActiveSuggestion((activeIndex + 1) % suggestions.length);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            updateActiveSuggestion(
+              activeIndex <= 0 ? suggestions.length - 1 : activeIndex - 1,
+            );
+          } else if (event.key === "Enter") {
+            event.preventDefault();
+            selectSuggestion(activeIndex);
+          } else if (event.key === "Escape") {
+            clearSuggestions();
+          }
+        });
+
+        input.addEventListener("blur", () => {
+          window.setTimeout(clearSuggestions, 120);
+        });
+      }
+
+      /* =====================================================================
+       * Safe havens
+       * ---------------------------------------------------------------------
+       * Somewhere to walk into if something feels wrong: precinct houses,
+       * firehouses, emergency rooms and subway stations, all staffed at every
+       * hour. The list ships with the app (data/safe-havens.json, built from
+       * OpenStreetMap) so it costs no request and cannot rate-limit.
+       * ===================================================================== */
+
+      const HAVEN_KINDS = {
+        police: { label: "Police station", letter: "P" },
+        hospital: { label: "Emergency room", letter: "H" },
+        subway: { label: "Subway station", letter: "S" },
+        fire: { label: "Fire station", letter: "F" },
+      };
+
+      async function loadSafeHavens() {
+        if (safeHavens.length) return safeHavens;
+        try {
+          const response = await fetch("data/safe-havens.json");
+          if (!response.ok) throw new Error("Safe haven list unavailable");
+          const payload = await response.json();
+          safeHavens = Array.isArray(payload.havens) ? payload.havens : [];
+        } catch (error) {
+          console.warn("Could not load safe havens:", error);
+          safeHavens = [];
+        }
+        return safeHavens;
+      }
+
+      function havenMarker(haven) {
+        const kind = HAVEN_KINDS[haven.t] || HAVEN_KINDS.police;
+        return L.marker([haven.y, haven.x], {
+          icon: L.divIcon({
+            className: "haven-marker",
+            html:
+              '<div class="haven-dot haven-' +
+              haven.t +
+              '">' +
+              kind.letter +
+              "</div>",
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          }),
+          keyboard: false,
+        }).bindPopup(
+          '<div class="map-popup">' +
+            '<h4 class="map-popup-title haven">' +
+            escapeHtml(haven.n) +
+            "</h4>" +
+            '<div class="map-popup-body">' +
+            "<div>" +
+            kind.label +
+            ", open around the clock</div>" +
+            '<div class="map-popup-action">' +
+            '<a class="map-popup-link" target="_blank" rel="noopener" href="' +
+            "https://www.google.com/maps/dir/?api=1&destination=" +
+            haven.y +
+            "," +
+            haven.x +
+            '">Walk me here</a>' +
+            "</div></div></div>",
+        );
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      /*
+       * Every haven in the city is on the map, drawn for wherever you are
+       * looking. Putting all 1,300 markers in at once is what makes a map
+       * crawl, so we render the current viewport and redraw as you pan. Zoomed
+       * out, only the places you would actually cross town for stay on.
+       */
+      let havenRenderTimer;
+
+      async function renderHavensInView() {
+        await loadSafeHavens();
+        if (!havenLayer || !map || !safeHavens.length) return;
+
+        const bounds = map.getBounds().pad(0.15);
+        const zoom = map.getZoom();
+        const priorityOnly = zoom < 14;
+
+        const visible = safeHavens.filter((haven) => {
+          if (priorityOnly && haven.t !== "police" && haven.t !== "hospital") {
+            return false;
+          }
+          return bounds.contains([haven.y, haven.x]);
+        });
+
+        havenLayer.clearLayers();
+        visible
+          .slice(0, 500)
+          .forEach((haven) => havenMarker(haven).addTo(havenLayer));
+      }
+
+      function scheduleHavenRender() {
+        clearTimeout(havenRenderTimer);
+        havenRenderTimer = setTimeout(renderHavensInView, 180);
+      }
+
+      function nearestHaven(lat, lng) {
+        let best = null;
+        let bestDistance = Infinity;
+        safeHavens.forEach((haven) => {
+          const distance = getDistance(lat, lng, haven.y, haven.x);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            best = haven;
+          }
+        });
+        return best ? { haven: best, distance: bestDistance } : null;
+      }
+
+      /* =====================================================================
+       * Safety model
+       * ---------------------------------------------------------------------
+       * The question is not "how much crime happened near here" but "how much
+       * of it is the kind that could happen to me, on this pavement, at the
+       * hour I am walking". Three things drive the weighting:
+       *
+       *   1. What kind of offence it was. A phone taken at knifepoint and a
+       *      shoplifted jacket are not the same signal for someone on foot.
+       *   2. Whether it happened on the street or behind a door. Nearly half
+       *      of all reports are INSIDE a home or a shop, and those say very
+       *      little about whether a block is pleasant to walk down.
+       *   3. What time of day it happened, matched against when you are going.
+       * ===================================================================== */
+
+      // How much each offence bears on someone walking past: could this have
+      // happened to a pedestrian, and how badly would it have gone?
+      const OFFENCE_WEIGHTS = [
+        [/murder|homicide|shooting/, 10],
+        [/rape|sex crime|sexual abuse|forcible touching|sex abuse/, 10],
+        [/kidnapping|abduction/, 9],
+        [/robbery/, 8],
+        [/felony assault/, 8],
+        [/assault|menacing|stalking|harassment/, 5],
+        [/weapons|dangerous weapon/, 3.5],
+        [/arson/, 3],
+        [/burglary/, 1.5],
+        [/larceny.*vehicle|vehicle.*larceny|auto stripping/, 0.2],
+        [/grand larceny|petit larceny|theft/, 1.2],
+        [/criminal mischief/, 0.6],
+        [/drug|controlled substance|marijuana/, 0.8],
+        [/trespass/, 0.5],
+        [/fraud|forgery|identity theft|impersonation|embezzlement/, 0.1],
+      ];
+
+      function offenceWeight(description) {
+        const text = (description || "").toLowerCase();
+        for (const [pattern, weight] of OFFENCE_WEIGHTS) {
+          if (pattern.test(text)) return weight;
+        }
+        return 1;
+      }
+
+      // Street level, or behind a door. This is the single largest correction:
+      // without it, busy shopping blocks look dangerous because of shoplifting,
+      // when they are usually the better place to walk after dark.
+      function exposureWeight(crime) {
+        const where = (crime.where || "").toUpperCase();
+        const premises = (crime.premises || "").toUpperCase();
+
+        const outdoorPremises =
+          /STREET|PARK|PLAYGROUND|HIGHWAY|BRIDGE|TUNNEL|PARKING|GAS STATION|OPEN AREA|SUBWAY|TRANSIT|BUS|FERRY|MARINA/.test(
+            premises,
+          );
+
+        if (/FRONT OF|OPPOSITE OF|OUTSIDE|REAR OF/.test(where)) {
+          return outdoorPremises ? 1.15 : 1;
+        }
+        if (/INSIDE/.test(where)) {
+          // Inside a station or a park building is still somewhere you may be.
+          return outdoorPremises ? 0.6 : 0.25;
+        }
+        // Location not recorded: assume nothing either way.
+        return outdoorPremises ? 0.9 : 0.7;
+      }
+
+      function severityWeight(lawCat) {
+        const cat = (lawCat || "").toUpperCase();
+        if (cat === "FELONY") return 1.35;
+        if (cat === "VIOLATION") return 0.7;
+        return 1;
+      }
+
+      // Hours wrap, so 23:00 and 01:00 are two apart, not twenty-two.
+      function hourGap(a, b) {
+        const gap = Math.abs(a - b) % 24;
+        return Math.min(gap, 24 - gap);
+      }
+
+      function crimeHour(crime) {
+        const raw = crime.cmplnt_fr_tm || crime.time;
+        if (!raw) return null;
+        const hour = parseInt(String(raw).slice(0, 2), 10);
+        return Number.isFinite(hour) && hour >= 0 && hour < 24 ? hour : null;
+      }
+
+      /*
+       * How many people are out walking, by hour, against the midday peak.
+       * The shape is the standard one for a dense city: a deep trough around
+       * 3-5am, a sharp morning climb, a broad midday and evening plateau.
+       *
+       * This is the piece the model was missing, and without it the scores ran
+       * backwards. Counting incidents alone made 2am look safer than 2pm
+       * everywhere, because most reports are daytime ones - shoplifting,
+       * office-hours theft, daytime disputes. But a walker does not care how
+       * many things happened, they care about the chance of one happening to
+       * them, and at 3am the same street holds a twentieth of the people. The
+       * risk each of them carries is correspondingly higher.
+       */
+      const PEDESTRIAN_ACTIVITY = [
+        0.2, 0.13, 0.09, 0.06, 0.06, 0.1, // midnight to 5am
+        0.25, 0.5, 0.8, 0.85, 0.85, 0.95, // 6am to 11am
+        1.0, 1.0, 0.95, 0.95, 0.95, 1.0, // noon to 5pm
+        0.95, 0.8, 0.65, 0.5, 0.4, 0.3, // 6pm to 11pm
+      ];
+
+      /*
+       * Fewer people about means each incident represents more risk per head,
+       * and it is darker. Raised to 0.75 rather than 1 because "safety in
+       * numbers" is real but not linear, and capped at 4x so the small hours
+       * stay a strong signal rather than an absurd one.
+       */
+      function lonelinessFactor(hour) {
+        const activity = PEDESTRIAN_ACTIVITY[hour];
+        if (!activity) return 1;
+        return Math.min(4, Math.pow(1 / activity, 0.75));
+      }
+
+      // An incident at the hour you will be out matters far more than the same
+      // incident at breakfast time.
+      function timeOfDayWeight(crime, travelHour) {
+        const hour = crimeHour(crime);
+        if (hour === null || travelHour === null) return 1;
+        const gap = hourGap(hour, travelHour);
+        if (gap <= 1) return 2.2;
+        if (gap <= 2) return 1.8;
+        if (gap <= 3) return 1.4;
+        if (gap <= 4) return 1.1;
+        return 0.6;
+      }
+
+      function recencyWeight(crime) {
+        const raw = crime.cmplnt_fr_dt || crime.date;
+        if (!raw) return 1;
+        const when = new Date(raw);
+        if (isNaN(when)) return 1;
+        // Against the newest data in the feed, not against today: with a
+        // three-month publication lag, wall-clock ageing makes every incident
+        // look stale and flattens this signal to nothing.
+        const days = (crimeReferenceMs - when.getTime()) / 86400000;
+        if (days <= 30) return 1.8;
+        if (days <= 90) return 1.4;
+        if (days <= 180) return 1.15;
+        return 1;
+      }
+
+      function attemptWeight(crime) {
+        return /ATTEMPTED/i.test(crime.completed || "") ? 0.7 : 1;
+      }
+
+      // Plain-language grouping, used to explain a score rather than to set it.
+      function crimeCategory(description) {
+        const text = (description || "").toLowerCase();
+        if (/rape|sex crime|sexual|forcible touching/.test(text))
+          return "sex offences";
+        if (/robbery/.test(text)) return "robbery";
+        if (/assault|menacing|harassment|stalking/.test(text)) return "assault";
+        if (/murder|homicide|shooting|weapons/.test(text)) return "violence";
+        if (/larceny|theft|burglary/.test(text)) return "theft";
+        return "other";
+      }
+
+      function calculateSafetyScore(crimeData, routeCoords, travelHour) {
+        const hour =
+          typeof travelHour === "number" ? travelHour : departureHour();
+
+        if (!crimeData || crimeData.length === 0) {
+          return {
+            score: "low",
+            count: 0,
+            riskScore: 0,
+            density: 0,
+            safetyIndex: 100,
+            reason: "No recent incidents reported nearby",
+            categories: {},
+          };
+        }
+
+        let totalRiskScore = 0;
+        let nearbyCount = 0;
+        const categories = {};
+        const routeBuffer = 0.0012; // ~120m either side of the path
+        const routeLength = calculateRouteLength(routeCoords);
+
+        crimeData.forEach((crime) => {
+          if (!crime.latitude || !crime.longitude) return;
+          const crimeLat = parseFloat(crime.latitude);
+          const crimeLng = parseFloat(crime.longitude);
+          if (isNaN(crimeLat) || isNaN(crimeLng)) return;
+
+          const minDistance = getMinDistanceToRoute(
+            crimeLat,
+            crimeLng,
+            routeCoords,
+          );
+          if (minDistance > routeBuffer) return;
+
+          const weight =
+            offenceWeight(crime.ofns_desc) *
+            exposureWeight(crime) *
+            severityWeight(crime.lawCat) *
+            timeOfDayWeight(crime, hour) *
+            recencyWeight(crime) *
+            attemptWeight(crime);
+
+          // Things that barely register for a walker should not pad the count
+          // either, or every shopping street reads as busy with crime.
+          if (weight < 0.4) return;
+
+          nearbyCount++;
+          const distanceDecay = Math.max(0.1, 1 - minDistance / routeBuffer);
+          const contribution = weight * distanceDecay;
+
+          const category = crimeCategory(crime.ofns_desc);
+          categories[category] = (categories[category] || 0) + contribution;
+
+          totalRiskScore += contribution;
+        });
+
+        /*
+         * Weighted risk per km per 30 days, then corrected for how alone you
+         * will be. Dividing by the window keeps the number meaning the same
+         * thing however much history was fetched - otherwise widening the
+         * window silently inflates every score and the bands stop matching.
+         */
+        const perKm =
+          routeLength > 0 ? totalRiskScore / routeLength : totalRiskScore;
+        const perMonth = perKm / (crimeWindowDays / 30);
+        const riskDensity = perMonth * lonelinessFactor(hour);
+
+        /*
+         * Bands come from the spread of real walks, not from a guess. Two dozen
+         * ~1km routes across all five boroughs, each scored at 2pm, 11pm and
+         * 2am, as weighted risk per km per 30 days:
+         *
+         *   under 60    Park Slope 12 / 45, Riverdale 17 / 28,
+         *               Williamsburg 21 / 62, Upper East Side 37 / 50
+         *   60 to 200   Bed-Stuy 68 / 191, Flatbush 78 / 119,
+         *               Flushing 113 / 181, Harlem 123 / 345
+         *   over 200    Midtown 213 / 645, Bushwick 213 / 478,
+         *               Times Square 287 / 1007
+         *
+         * Roughly 46% low in daylight against 17% at 11pm and 13% at 2am.
+         * Chelsea is the clearest case for why the hour has to count: 55 at two
+         * in the afternoon and 256 at eleven at night, on the same pavement.
+         */
+        let riskLevel;
+        if (riskDensity >= 200) riskLevel = "high";
+        else if (riskDensity >= 60) riskLevel = "medium";
+        else riskLevel = "low";
+
+
+        return {
+          score: riskLevel,
+          count: nearbyCount,
+          riskScore: Math.round(totalRiskScore),
+          density: Math.round(riskDensity * 10) / 10,
+          safetyIndex: Math.round(100 / (1 + riskDensity / 110)),
+          reason: describeSafety(categories, nearbyCount, hour, riskLevel),
+          categories,
+        };
+      }
+
+      /*
+       * One short sentence a person can act on. It has to scale with the
+       * number: naming the worst category regardless of how much of it there
+       * was made a quiet street in Park Slope, with two reports in three
+       * months, read exactly like Times Square.
+       */
+      const CATEGORY_WORDS = {
+        "sex offences": "sex offences",
+        robbery: "robbery",
+        assault: "assault",
+        violence: "violent crime",
+        theft: "theft",
+        other: "minor offences",
+      };
+
+      function describeSafety(categories, count, hour, riskLevel) {
+        if (!count) return "No recent incidents reported nearby";
+
+        // Ranked by contribution to the score, so the sentence explains the
+        // number rather than just naming the most common report.
+        const ranked = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+        if (!ranked.length) return "No recent incidents reported nearby";
+
+        const word = CATEGORY_WORDS[ranked[0][0]] || "incidents";
+        const atNight = hour !== null && (hour >= 21 || hour < 5);
+        const when = atNight ? "around this hour" : "at this time of day";
+
+        // On a quiet route the reassurance and the scale are the useful part.
+        // Naming the worst category there reads as a warning about nothing.
+        if (riskLevel === "low") {
+          return `Quiet stretch, ${count} report${count === 1 ? "" : "s"} nearby`;
+        }
+        if (riskLevel === "medium") {
+          return `Some ${word} reported ${when}`;
+        }
+        return `Frequent ${word} reported ${when}`;
+      }
+
+      function getMinDistanceToRoute(lat, lng, routeCoords) {
+        let minDistance = Infinity;
+        for (let i = 0; i < routeCoords.length - 1; i++) {
+          const distance = distanceToLineSegment(
+            lat,
+            lng,
+            routeCoords[i],
+            routeCoords[i + 1],
+          );
+          minDistance = Math.min(minDistance, distance);
+        }
+        return minDistance;
+      }
+
+      function distanceToLineSegment(px, py, [ax, ay], [bx, by]) {
+        const A = px - ax,
+          B = py - ay,
+          C = bx - ax,
+          D = by - ay;
+        const dot = A * C + B * D,
+          lenSq = C * C + D * D;
+        let param = lenSq !== 0 ? dot / lenSq : -1;
+        let xx, yy;
+        if (param < 0) [xx, yy] = [ax, ay];
+        else if (param > 1) [xx, yy] = [bx, by];
+        else [xx, yy] = [ax + param * C, ay + param * D];
+        const dx = px - xx,
+          dy = py - yy;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      function calculateRouteLength(routeCoords) {
+        let length = 0;
+        for (let i = 0; i < routeCoords.length - 1; i++) {
+          length += getDistance(
+            routeCoords[i][0],
+            routeCoords[i][1],
+            routeCoords[i + 1][0],
+            routeCoords[i + 1][1],
+          );
+        }
+        return length / 1000; // Convert to km
+      }
+
+      function updateRouteInfo(routeData, safetyData) {
+        const routeInfo = document.getElementById("routeInfo");
+        const safetyBadge = document.getElementById("safetyBadge");
+        const walkingTime = document.getElementById("walkingTime");
+        const crimeCount = document.getElementById("crimeCount");
+
+        // Update safety score
+        safetyBadge.className = `safety-badge ${safetyData.score}`;
+        switch (safetyData.score) {
+          case "high":
+            safetyBadge.textContent = "High Risk";
+            break;
+          case "medium":
+            safetyBadge.textContent = "Medium Risk";
+            break;
+          default:
+            safetyBadge.textContent = "Low Risk";
+            break;
+        }
+
+        // Walking time, and the clock time you would actually arrive at.
+        const minutes = routeMinutes(routeData);
+        walkingTime.textContent = `${minutes} min walk`;
+        crimeCount.textContent = `arrive ~${arrivalTime(minutes)}`;
+
+        routeInfo.classList.add("active");
+      }
+
+      function selectRoute(index, fitRouteBounds = true) {
+        if (index < 0 || index >= allRoutes.length) return;
+        activeRouteIndex = index;
+
+        const selected = allRoutes[index];
+        routeCoordinates = selected.coords;
+        navigationSteps = selected.route.legs[0].steps;
+        currentStepIndex = 0;
+
+        // Update map polyline styles
+        routePolylines.forEach((polyline, idx) => {
+          const isActive = idx === index;
+          polyline.setStyle({
+            color: isActive ? "#0047ce" : "#a9a49c",
+            weight: isActive ? 7 : 4,
+            opacity: isActive ? 1 : 0.5,
+          });
+          if (isActive) {
+            polyline.bringToFront();
+          }
+        });
+
+        // Update navigation steps list
+        displayNavigationInstructions(navigationSteps);
+
+        // Update top route info card
+        updateRouteInfo(selected.route, selected.safetyData);
+
+        // Update active state in selector UI
+        const cards = document.querySelectorAll(".route-card");
+        cards.forEach((card, idx) => {
+          if (idx === index) {
+            card.classList.add("active");
+          } else {
+            card.classList.remove("active");
+          }
+        });
+
+        // Fit bounds to selected route if requested
+        if (fitRouteBounds) {
+          const selectedPolyline = routePolylines[index];
+          if (selectedPolyline) {
+            const routePadding = getRouteBoundsPadding();
+            map.fitBounds(selectedPolyline.getBounds(), {
+              paddingTopLeft: routePadding.topLeft,
+              paddingBottomRight: routePadding.bottomRight,
+            });
+          }
+        }
+      }
+
+      function getRouteBoundsPadding() {
+        const sidebarIsVisible =
+          window.matchMedia("(min-width: 768px)").matches;
+        const sidebar = document.querySelector(".sidebar-panel");
+        const sidebarBounds = sidebar?.getBoundingClientRect();
+        const leftPadding = sidebarBounds
+          ? Math.ceil(sidebarBounds.right + 40)
+          : 460;
+
+        if (sidebarIsVisible) {
+          return { topLeft: [leftPadding, 90], bottomRight: [70, 70] };
+        }
+
+        // On phones the panel is a bottom sheet sitting over the map, so the
+        // route has to be fitted into the strip left above it.
+        const sheetHeight = sidebarBounds ? sidebarBounds.height : 0;
+        return {
+          topLeft: [40, 80],
+          bottomRight: [40, Math.round(sheetHeight) + 30],
+        };
+      }
+
+      function renderRouteSelector() {
+        const selectorContainer = document.getElementById("routeSelector");
+        if (!selectorContainer) return;
+        selectorContainer.innerHTML = "";
+
+        // Find the safest route index
+        let safestIndex = 0;
+        let minRisk = Infinity;
+        allRoutes.forEach((r, idx) => {
+          if (r.safetyData.density < minRisk) {
+            minRisk = r.safetyData.density;
+            safestIndex = idx;
+          }
+        });
+
+        allRoutes.forEach((routeObj, idx) => {
+          const distanceKm = routeObj.route.distance / 1000;
+          const durationMin = routeMinutes(routeObj.route);
+
+          let badgeHtml = "";
+          if (idx === safestIndex) {
+            badgeHtml = '<span class="route-card-badge low">Safest</span>';
+          } else if (idx === 0) {
+            badgeHtml = '<span class="route-card-badge fastest">Fastest</span>';
+          }
+
+          const card = document.createElement("div");
+          card.className = `route-card ${idx === activeRouteIndex ? "active" : ""}`;
+          card.onclick = () => selectRoute(idx);
+          const safety = routeObj.safetyData;
+          card.innerHTML = `
+                    <div class="route-card-title">
+                        <span>${routeObj.label || "Route " + (idx + 1)}</span>
+                        ${badgeHtml}
+                    </div>
+                    <div class="route-card-meta">
+                        ${durationMin} min | ${(distanceKm * 0.621371).toFixed(1)} mi
+                        <span class="route-card-arrival">arrive ~${arrivalTime(durationMin)}</span>
+                    </div>
+                    <div class="route-card-safety">
+                        <span class="route-card-badge ${safety.score}">${safety.score} risk</span>
+                        ${
+                          crimeDataAvailable
+                            ? `<span class="route-card-crimes">${safety.count} nearby</span>`
+                            : ""
+                        }
+                    </div>
+                    ${
+                      crimeDataAvailable && safety.reason
+                        ? `<div class="route-card-reason">${escapeHtml(
+                            comparisonNote(routeObj, idx) || safety.reason,
+                          )}</div>`
+                        : ""
+                    }
+                `;
+          selectorContainer.appendChild(card);
+        });
+      }
+
+      /*
+       * In a dense part of the city every option can land in the same risk
+       * band, which tells you nothing about which one to take. What helps is
+       * the comparison: this way is a fifth quieter than the obvious one.
+       */
+      function comparisonNote(routeObj, idx) {
+        if (idx === 0 || !allRoutes.length) return null;
+        const baseline = allRoutes[0].safetyData.density;
+        if (!baseline) return null;
+
+        const change = (baseline - routeObj.safetyData.density) / baseline;
+        if (Math.abs(change) < 0.1) return null;
+
+        const percent = Math.round(Math.abs(change) * 100);
+        return change > 0
+          ? `${percent}% less risk than the direct route`
+          : `${percent}% more risk than the direct route`;
+      }
+
+      function setRouteLegendHasRoute(hasRoute) {
+        document
+          .querySelector(".route-legend")
+          ?.classList.toggle("has-route", hasRoute);
+      }
+
+      function resetView() {
+        // Stop location tracking
+        stopLocationTracking();
+
+        // Clear route lines and markers
+        markers.clearLayers();
+        routePolylines.forEach((p) => map.removeLayer(p));
+        routePolylines = [];
+        allRoutes = [];
+        currentCrimeData = [];
+        offRouteStrikes = 0;
+        offRouteWarned = false;
+        isNavigating = false;
+        turnMarker = null;
+        updateNavNow();
+        updateRecenterButton();
+        setRouteLegendHasRoute(false);
+
+        // Hide navigation panel and reset collapsed state
+        const navPanel = document.querySelector(".navigation-panel");
+        navPanel.classList.remove("active");
+        navPanel.classList.remove("collapsed");
+
+        // Show control panel
+        document.querySelector(".control-panel").classList.remove("hidden");
+
+        // Hide route info
+        document.getElementById("routeInfo").classList.remove("active");
+
+        // Reset map view to default
+        map.setView([40.7128, -74.006], 13);
+      }
+
+      /* =====================================================================
+       * Routing around trouble
+       * ---------------------------------------------------------------------
+       * OSRM hands back a couple of alternatives, but they are alternatives by
+       * distance, not by safety: it has never heard of the incident data. So
+       * ranking them is the floor, not the ceiling. Here we find the worst
+       * stretch on the best path, push a waypoint out to one side of it, and
+       * ask for a route through there instead. If it scores better, it earns
+       * its place in the list.
+       * ===================================================================== */
+
+      /* ---------------------------------------------------------------------
+       * Walking routes
+       * ---------------------------------------------------------------------
+       * This has to be a pedestrian router, and the public OSRM demo server is
+       * not one. It answers /foot/, /bike/ and /driving/ with byte-identical
+       * geometry at 28 km/h, because only the car profile is loaded. Every
+       * "walking" route it gave us was a driving route: one-way streets
+       * obeyed for no reason, no footpaths, no crossings, and turn text with
+       * no street names in it.
+       *
+       * Valhalla routes pedestrians properly, walks at 5 km/h, and writes its
+       * own instructions ("Turn right onto 6th Avenue"). Nudging it away from
+       * unnamed sidewalk ways keeps those instructions worth reading.
+       * ------------------------------------------------------------------- */
+
+      const VALHALLA_URL = "https://valhalla1.openstreetmap.de/route";
+
+      const PEDESTRIAN_COSTING = {
+        walkway_factor: 1.6,
+        sidewalk_factor: 1.4,
+        driveway_factor: 3,
+        alley_factor: 2.5,
+      };
+
+      // Valhalla returns its geometry as a polyline at 1e-6 precision.
+      function decodePolyline6(encoded) {
+        const points = [];
+        let index = 0;
+        let lat = 0;
+        let lng = 0;
+
+        while (index < encoded.length) {
+          let result = 0;
+          let shift = 0;
+          let byte;
+          do {
+            byte = encoded.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+          } while (byte >= 0x20);
+          lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+          result = 0;
+          shift = 0;
+          do {
+            byte = encoded.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+          } while (byte >= 0x20);
+          lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+          points.push([lat / 1e6, lng / 1e6]);
+        }
+        return points;
+      }
+
+      // Valhalla numbers its maneuvers; the rest of the app speaks OSRM's
+      // type/modifier vocabulary, so translate once here.
+      const VALHALLA_MANEUVERS = {
+        1: ["depart", ""],
+        2: ["depart", "right"],
+        3: ["depart", "left"],
+        4: ["arrive", ""],
+        5: ["arrive", "right"],
+        6: ["arrive", "left"],
+        7: ["continue", ""],
+        8: ["continue", ""],
+        9: ["turn", "slight right"],
+        10: ["turn", "right"],
+        11: ["turn", "sharp right"],
+        12: ["turn", "uturn"],
+        13: ["turn", "uturn"],
+        14: ["turn", "sharp left"],
+        15: ["turn", "left"],
+        16: ["turn", "slight left"],
+        17: ["continue", ""],
+        22: ["continue", ""],
+        23: ["turn", "slight right"],
+        24: ["turn", "slight left"],
+        25: ["merge", ""],
+        26: ["continue", ""],
+        27: ["continue", ""],
+      };
+
+      // Shaped like an OSRM route so everything downstream is unchanged.
+      function normaliseValhallaTrip(trip) {
+        const leg = trip.legs && trip.legs[0];
+        if (!leg) return null;
+
+        const shape = decodePolyline6(leg.shape);
+        const steps = (leg.maneuvers || []).map((m) => {
+          const [type, modifier] = VALHALLA_MANEUVERS[m.type] || ["continue", ""];
+          const at = shape[Math.min(m.begin_shape_index, shape.length - 1)];
+          return {
+            distance: (m.length || 0) * 1000,
+            duration: m.time || 0,
+            maneuver: {
+              instruction: m.instruction || "",
+              type,
+              modifier,
+              location: at ? [at[1], at[0]] : null,
+            },
+          };
+        });
+
+        return {
+          distance: trip.summary.length * 1000,
+          duration: trip.summary.time,
+          geometry: { coordinates: shape.map(([lat, lng]) => [lng, lat]) },
+          legs: [{ steps }],
+        };
+      }
+
+      async function valhallaRoutes(points, alternates = 0) {
+        const body = {
+          locations: points.map((pt) => ({
+            lat: pt.lat,
+            lon: pt.lng,
+            type: "break",
+          })),
+          costing: "pedestrian",
+          costing_options: { pedestrian: PEDESTRIAN_COSTING },
+          directions_options: { units: "kilometers" },
+        };
+        if (alternates) body.alternates = alternates;
+
+        const response = await fetch(
+          `${VALHALLA_URL}?json=${encodeURIComponent(JSON.stringify(body))}`,
+        );
+        if (!response.ok) throw new Error(`Routing failed (${response.status})`);
+
+        const data = await response.json();
+        const trips = [data.trip]
+          .concat((data.alternates || []).map((a) => a.trip))
+          .filter(Boolean);
+
+        return trips.map(normaliseValhallaTrip).filter(Boolean);
+      }
+
+      async function requestRoute(points) {
+        const routes = await valhallaRoutes(points);
+        return routes.length ? routes[0] : null;
+      }
+
+      // The single nastiest stretch of a path: slide a window along it and
+      // find where the weighted incidents pile up most.
+      function worstStretch(coords, crimes, hour) {
+        if (!coords.length || !crimes.length) return null;
+
+        const buckets = new Map();
+        const step = Math.max(1, Math.floor(coords.length / 24));
+
+        crimes.forEach((crime) => {
+          const lat = parseFloat(crime.latitude);
+          const lng = parseFloat(crime.longitude);
+          if (isNaN(lat) || isNaN(lng)) return;
+
+          let bestIndex = -1;
+          let bestDistance = Infinity;
+          for (let i = 0; i < coords.length; i += step) {
+            const d =
+              (coords[i][0] - lat) ** 2 + (coords[i][1] - lng) ** 2;
+            if (d < bestDistance) {
+              bestDistance = d;
+              bestIndex = i;
+            }
+          }
+          if (bestIndex < 0 || Math.sqrt(bestDistance) > 0.002) return;
+
+          const weight =
+            offenceWeight(crime.ofns_desc) *
+            exposureWeight(crime) *
+            severityWeight(crime.lawCat) *
+            timeOfDayWeight(crime, hour) *
+            recencyWeight(crime);
+          if (weight < 0.4) return;
+          buckets.set(bestIndex, (buckets.get(bestIndex) || 0) + weight);
+        });
+
+        /*
+         * Only look at the middle of the walk. Detouring around the worst spot
+         * overall is no use when that spot is the doorway you are leaving from
+         * or arriving at - you cannot route around your own destination. Times
+         * Square is the busiest stretch of a Times Square walk, and rejecting
+         * the whole route for that reason was leaving every trip undetoured.
+         */
+        const margin = Math.floor(coords.length * 0.18);
+        let worstIndex = -1;
+        let worstWeight = 0;
+        buckets.forEach((weight, index) => {
+          if (index < margin || index > coords.length - margin) return;
+          if (weight > worstWeight) {
+            worstWeight = weight;
+            worstIndex = index;
+          }
+        });
+
+        if (worstIndex < 0 || worstWeight < 5) return null;
+        return { index: worstIndex, weight: worstWeight };
+      }
+
+      // A point roughly `metres` to one side of the path, square to it.
+      function sidestepPoint(coords, index, metres, side) {
+        const a = coords[Math.max(0, index - 2)];
+        const b = coords[Math.min(coords.length - 1, index + 2)];
+        const dLat = b[0] - a[0];
+        const dLng = b[1] - a[1];
+        const length = Math.hypot(dLat, dLng);
+        if (!length) return null;
+
+        // Perpendicular, corrected for longitude shrinking as you go north.
+        const latMetres = metres / 111320;
+        const lngMetres =
+          metres / (111320 * Math.cos((coords[index][0] * Math.PI) / 180));
+
+        return {
+          lat: coords[index][0] + side * (-dLng / length) * latMetres,
+          lng: coords[index][1] + side * (dLat / length) * lngMetres,
+        };
+      }
+
+      async function findSaferAlternatives(best, crimes, start, end, hour) {
+        const spot = worstStretch(best.coords, crimes, hour);
+        if (!spot) return [];
+
+        // Try a couple of distances either side: too tight and you rejoin the
+        // same block, too wide and nobody would walk it.
+        const attempts = [];
+        for (const metres of [220, 380]) {
+          for (const side of [1, -1]) {
+            const via = sidestepPoint(best.coords, spot.index, metres, side);
+            if (via) attempts.push(via);
+          }
+        }
+
+        const found = [];
+        const results = await Promise.all(
+          attempts.map((via) =>
+            requestRoute([start, via, end]).catch(() => null),
+          ),
+        );
+
+        results.forEach((route) => {
+          if (!route) return;
+          // A safer route nobody would walk is not a safer route.
+          if (route.distance > best.route.distance * 1.45) return;
+
+          const coords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
+          const safetyData = calculateSafetyScore(crimes, coords, hour);
+          if (safetyData.density >= best.safetyData.density * 0.9) return;
+
+          found.push({ route, coords, safetyData, label: "Quieter way" });
+        });
+
+        // Keep only the best detour, and only if it is meaningfully better.
+        found.sort((a, b) => a.safetyData.density - b.safetyData.density);
+        return found.slice(0, 1);
+      }
+
+      // Add loading state management
+      let isLoading = false;
+
+      async function findRoute() {
+        if (isLoading) return;
+
+        const startInput = document.getElementById("startAddress");
+        const endInput = document.getElementById("endAddress");
+
+        if (!startInput.value || !endInput.value) {
+          showMessage("Please enter both start and end locations", "error");
+          return;
+        }
+
+        // Show loading state
+        isLoading = true;
+        const loading = document.createElement("div");
+        loading.className = "loading";
+        loading.innerHTML =
+          '<div class="spinner"></div><p>Calculating safest route...</p>';
+        document.body.appendChild(loading);
+
+        try {
+          // Clear previous route and markers, but keep the crime data layer
+          markers.clearLayers();
+
+          // Only clear crime layer if we're not in the middle of a navigation
+          if (!isNavigating) {
+            crimeLayer.clearLayers();
+          }
+
+          // Get coordinates for start and end points
+          const [startCoords, endCoords] = await Promise.all([
+            getCoordinatesFromInput(startInput),
+            getCoordinatesFromInput(endInput),
+          ]);
+
+          const routes = (await valhallaRoutes(
+            [startCoords, endCoords],
+            2,
+          )).slice(0, 5);
+
+          if (!routes.length) throw new Error("No routes found");
+
+          // Combine coordinates to get the full bounding box for crime search
+          const allCoords = routes.flatMap((r) => r.geometry.coordinates);
+          const crimes = await visualizeCrimeData(allCoords);
+          currentCrimeData = crimes;
+
+          // Score the alternatives OSRM offered, then try to beat them.
+          const hour = departureHour();
+          let candidates = routes.map((route) => {
+            const coords = route.geometry.coordinates.map((coord) => [
+              coord[1],
+              coord[0],
+            ]);
+            return {
+              route,
+              coords,
+              safetyData: calculateSafetyScore(crimes, coords, hour),
+            };
+          });
+
+          if (crimeDataAvailable) {
+            const best = candidates.reduce((a, b) =>
+              b.safetyData.density < a.safetyData.density ? b : a,
+            );
+            try {
+              const safer = await findSaferAlternatives(
+                best,
+                crimes,
+                startCoords,
+                endCoords,
+                hour,
+              );
+              candidates = candidates.concat(safer);
+            } catch (error) {
+              console.warn("Could not look for a quieter route:", error);
+            }
+          }
+
+          allRoutes = candidates.map((candidate, idx) => ({
+            ...candidate,
+            index: idx,
+          }));
+
+          // Clear previous route polylines
+          routePolylines.forEach((p) => map.removeLayer(p));
+          routePolylines = [];
+          setRouteLegendHasRoute(false);
+
+          // Draw all routes
+          allRoutes.forEach((rObj) => {
+            const polyline = L.polyline(rObj.coords, {
+              color: rObj.index === 0 ? "#0047ce" : "#a9a49c",
+              weight: rObj.index === 0 ? 7 : 4,
+              opacity: rObj.index === 0 ? 1 : 0.5,
+              smoothFactor: 1,
+              lineCap: "round",
+              lineJoin: "round",
+              interactive: true,
+            }).addTo(markers);
+
+            polyline.on("click", () => selectRoute(rObj.index));
+            routePolylines.push(polyline);
+          });
+          setRouteLegendHasRoute(routePolylines.length > 0);
+
+          // Add start and end markers
+          L.marker([startCoords.lat, startCoords.lng], {
+            icon: L.divIcon({
+              className: "start-marker",
+              html: '<div class="route-start-dot"></div>',
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            }),
+          }).addTo(markers);
+
+          L.marker([endCoords.lat, endCoords.lng], {
+            icon: L.divIcon({
+              className: "end-marker",
+              html: '<div class="route-end-dot"></div>',
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            }),
+          }).addTo(markers);
+
+          // Render route selector in the panel
+          renderRouteSelector();
+
+          // Select the first route by default, but don't fit individual bounds yet
+          selectRoute(0, false);
+
+          // Fit bounds to show all routes overlaid on the map
+          if (routePolylines.length > 0) {
+            const group = L.featureGroup(routePolylines);
+            const routePadding = getRouteBoundsPadding();
+            map.fitBounds(group.getBounds(), {
+              paddingTopLeft: routePadding.topLeft,
+              paddingBottomRight: routePadding.bottomRight,
+            });
+          }
+
+          // Update UI
+          document.querySelector(".control-panel").classList.add("hidden");
+          const nav = document.querySelector(".navigation-panel");
+          nav.classList.add("active");
+          // ensure expanded when first shown
+          nav.classList.remove("collapsed");
+
+          // Start tracking user's location
+          isNavigating = true;
+          followUser = true;
+          updateRecenterButton();
+          updateNavNow();
+          startLocationTracking();
+
+          showMessage("Route calculated! Starting navigation...", "success");
+        } catch (error) {
+          console.error("Route finding error:", error);
+          let errorMessage = "Error finding route. Please try again.";
+
+          if (error.message.includes("Failed to fetch")) {
+            errorMessage = "Network error. Please check your connection.";
+          } else if (error.message.includes("No routes found")) {
+            errorMessage =
+              "No route found. Try adjusting your start or end point.";
+          } else if (error.message.includes("Location not found")) {
+            errorMessage =
+              "Location not found. Please check the addresses and try again.";
+          }
+
+          showMessage(errorMessage, "error");
+        } finally {
+          // Clean up loading state
+          isLoading = false;
+          if (document.body.contains(loading)) {
+            loading.remove();
+          }
+        }
+      }
+
+      function displayNavigationInstructions(steps) {
+        const navigationList = document.getElementById("navigationList");
+        navigationList.innerHTML = "";
+        currentStepIndex = 0;
+
+        steps.forEach((step, index) => {
+          const li = document.createElement("li");
+          li.className = "navigation-item";
+          if (index === 0) li.classList.add("current");
+
+          const instruction =
+            step.maneuver.instruction || getInstructionText(step.maneuver);
+          const distance = formatDistance(step.distance);
+
+          li.innerHTML = `
+                    <div class="navigation-icon">${maneuverIcon(step.maneuver)}</div>
+                    <div class="navigation-text">
+                        <div class="navigation-instruction">${instruction}</div>
+                        <div class="navigation-distance">${distance}</div>
+                    </div>
+                `;
+          // Tapping a step takes the map there, so you can look ahead.
+          li.addEventListener("click", () => focusStep(index));
+
+          navigationList.appendChild(li);
+        });
+      }
+
+      /* =====================================================================
+       * Walking it
+       * ---------------------------------------------------------------------
+       * A numbered list is fine for planning and useless once you are moving.
+       * On the pavement you want one instruction, large, with the distance to
+       * it counting down, the map staying under your feet, and the turn you
+       * are heading for marked ahead of you.
+       * ===================================================================== */
+
+      // Rounded arrows drawn to match the maneuver, so a glance is enough.
+      const MANEUVER_PATHS = {
+        straight: "M12 20V5M12 5l-5 5M12 5l5 5",
+        left: "M6 18h6a5 5 0 0 0 5-5V8M17 8l-4 4M17 8l4 4",
+        right: "M18 18h-6a5 5 0 0 1-5-5V8M7 8l4 4M7 8l-4 4",
+        slightLeft: "M8 20v-6a5 5 0 0 1 5-5h4M17 9l-4-4M17 9l-4 4",
+        slightRight: "M16 20v-6a5 5 0 0 0-5-5H7M7 9l4-4M7 9l4 4",
+        uturn: "M7 20V11a5 5 0 0 1 10 0v3M17 14l-3-3M17 14l3-3",
+        arrive: "M7 21V4h10l-2.5 4L17 12H7",
+      };
+
+      function maneuverShape(maneuver) {
+        const type = (maneuver && maneuver.type) || "";
+        const modifier = (maneuver && maneuver.modifier) || "";
+
+        if (/arrive/.test(type)) return "arrive";
+        if (/uturn/.test(modifier)) return "uturn";
+        if (/slight left/.test(modifier)) return "slightLeft";
+        if (/slight right/.test(modifier)) return "slightRight";
+        if (/left/.test(modifier)) return "left";
+        if (/right/.test(modifier)) return "right";
+        return "straight";
+      }
+
+      function maneuverIcon(maneuver) {
+        const shape = maneuverShape(maneuver);
+        const fillArrival = shape === "arrive";
+        return (
+          '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+          '<path d="' +
+          MANEUVER_PATHS[shape] +
+          '" fill="' +
+          (fillArrival ? "currentColor" : "none") +
+          '" stroke="currentColor" stroke-width="2"' +
+          ' stroke-linecap="round" stroke-linejoin="round" /></svg>'
+        );
+      }
+
+      function formatDistance(metres) {
+        if (metres >= 1609) return `${(metres / 1609.34).toFixed(1)} mi`;
+        return `${Math.round(metres * 3.28084)} ft`;
+      }
+
+      function stepLatLng(step) {
+        const location = step && step.maneuver && step.maneuver.location;
+        return location ? [location[1], location[0]] : null;
+      }
+
+      // Distance still to walk from wherever you are, not from the start.
+      function metresToNextTurn() {
+        const step = navigationSteps[currentStepIndex];
+        const target = stepLatLng(step);
+        if (!target) return null;
+        if (!userLocationMarker) return step.distance;
+        const here = userLocationMarker.getLatLng();
+        return getDistance(here.lat, here.lng, target[0], target[1]);
+      }
+
+      function remainingMetres() {
+        return navigationSteps
+          .slice(currentStepIndex)
+          .reduce((total, step) => total + (step.distance || 0), 0);
+      }
+
+      function updateNavNow() {
+        const banner = document.getElementById("navNow");
+        if (!banner) return;
+
+        const step = navigationSteps[currentStepIndex];
+        if (!isNavigating || !step) {
+          banner.hidden = true;
+          return;
+        }
+
+        banner.hidden = false;
+        const instruction =
+          step.maneuver.instruction || getInstructionText(step.maneuver);
+        const away = metresToNextTurn();
+
+        banner.querySelector(".nav-now-icon").innerHTML = maneuverIcon(
+          step.maneuver,
+        );
+        banner.querySelector(".nav-now-instruction").textContent = instruction;
+        banner.querySelector(".nav-now-distance").textContent =
+          away === null ? "" : `in ${formatDistance(away)}`;
+
+        const left = remainingMetres();
+        const progressText = document.getElementById("navProgressText");
+        if (progressText) {
+          progressText.textContent =
+            `Step ${currentStepIndex + 1} of ${navigationSteps.length}` +
+            ` · ${formatDistance(left)} to go` +
+            ` · ~${Math.max(1, walkMinutes(left))} min`;
+        }
+
+        const bar = document.getElementById("navProgressBar");
+        if (bar) {
+          const done = currentStepIndex / Math.max(1, navigationSteps.length);
+          bar.style.width = `${Math.round(done * 100)}%`;
+        }
+
+        markTurnAhead();
+      }
+
+      // A ring on the map at the turn you are currently walking towards.
+      function markTurnAhead() {
+        const target = stepLatLng(navigationSteps[currentStepIndex]);
+        if (!target || !map) return;
+
+        if (!turnMarker) {
+          turnMarker = L.marker(target, {
+            icon: L.divIcon({
+              className: "turn-marker",
+              html: '<div class="turn-dot"></div>',
+              iconSize: [22, 22],
+              iconAnchor: [11, 11],
+            }),
+            interactive: false,
+          }).addTo(markers);
+        } else {
+          turnMarker.setLatLng(target);
+        }
+      }
+
+      function focusStep(index) {
+        const target = stepLatLng(navigationSteps[index]);
+        if (!target || !map) return;
+        followUser = false;
+        updateRecenterButton();
+        map.flyTo(target, Math.max(map.getZoom(), 17), { duration: 0.6 });
+      }
+
+      function updateRecenterButton() {
+        const button = document.querySelector(".recenter-btn");
+        if (!button) return;
+        button.hidden = !isNavigating || followUser;
+      }
+
+      function recenterOnUser() {
+        followUser = true;
+        updateRecenterButton();
+        if (userLocationMarker) {
+          map.flyTo(userLocationMarker.getLatLng(), 17, { duration: 0.6 });
+        }
+      }
+
+      function getInstructionText(maneuver) {
+        const type = maneuver.type;
+        const modifier = maneuver.modifier;
+
+        switch (type) {
+          case "depart":
+            return "Head " + (modifier || "straight");
+          case "turn":
+            return "Turn " + (modifier || "right");
+          case "new name":
+            return "Continue straight";
+          case "arrive":
+            return "You have arrived at your destination";
+          case "merge":
+            return "Merge " + (modifier || "right");
+          case "continue":
+            return "Continue straight";
+          default:
+            return "Continue " + (modifier || "straight");
+        }
+      }
+
+      function startLocationTracking() {
+        if (!navigator.geolocation) {
+          showMessage("Geolocation not supported", "error");
+          return;
+        }
+
+        document.getElementById("locationStatus").classList.add("active");
+
+        watchId = navigator.geolocation.watchPosition(
+          updateUserLocation,
+          (error) => {
+            console.error("Location error:", error);
+            showMessage("Location tracking unavailable", "error");
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 },
+        );
+      }
+
+      function updateUserLocation(position) {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        if (userLocationMarker) {
+          userLocationMarker.setLatLng([userLat, userLng]);
+        } else {
+          userLocationMarker = L.marker([userLat, userLng], {
+            icon: L.divIcon({
+              className: "user-location-marker",
+              html: '<div class="user-location"></div>',
+            }),
+          }).addTo(markers);
+        }
+
+        // Walking with the map stuck across town is the fastest way to stop
+        // looking at it, so it follows until you take hold of it yourself.
+        if (isNavigating && followUser) {
+          map.setView([userLat, userLng], Math.max(map.getZoom(), 17), {
+            animate: true,
+            duration: 0.5,
+          });
+        }
+
+        checkNavigationProgress(userLat, userLng);
+        checkStillOnRoute(userLat, userLng);
+        updateNavNow();
+      }
+
+      /*
+       * Leaving the route used to go completely unnoticed: the app waited
+       * forever for you to reach a turn you were walking away from. Three
+       * consecutive fixes well off the line is a real wrong turn rather than
+       * GPS drift between buildings.
+       */
+      function checkStillOnRoute(userLat, userLng) {
+        if (!isNavigating || routeCoordinates.length < 2) return;
+
+        const offBy = getMinDistanceToRoute(userLat, userLng, routeCoordinates);
+        const offByMetres = offBy * 111320;
+
+        if (offByMetres > 70) {
+          offRouteStrikes++;
+          if (offRouteStrikes >= 3 && !offRouteWarned) {
+            offRouteWarned = true;
+            showMessage(
+              "You have wandered off the route. Search again to get a new one.",
+              "error",
+            );
+          }
+        } else {
+          offRouteStrikes = 0;
+          offRouteWarned = false;
+        }
+      }
+
+      function checkNavigationProgress(userLat, userLng) {
+        if (currentStepIndex >= navigationSteps.length) return;
+
+        const currentStep = navigationSteps[currentStepIndex];
+        if (!currentStep.maneuver || !currentStep.maneuver.location) return;
+
+        const stepLat = currentStep.maneuver.location[1];
+        const stepLng = currentStep.maneuver.location[0];
+
+        const distance = getDistance(userLat, userLng, stepLat, stepLng);
+
+        if (distance < 30) {
+          completeCurrentStep();
+        }
+      }
+
+      function completeCurrentStep() {
+        const navigationItems = document.querySelectorAll(".navigation-item");
+        const arriving = currentStepIndex + 1 >= navigationSteps.length;
+        if (!arriving) {
+          const next = navigationSteps[currentStepIndex + 1];
+          showMessage(
+            next.maneuver.instruction || getInstructionText(next.maneuver),
+            "info",
+          );
+        }
+        if (navigationItems[currentStepIndex]) {
+          navigationItems[currentStepIndex].classList.remove("current");
+          navigationItems[currentStepIndex].classList.add("completed");
+        }
+
+        currentStepIndex++;
+
+        if (currentStepIndex < navigationSteps.length) {
+          if (navigationItems[currentStepIndex]) {
+            navigationItems[currentStepIndex].classList.add("current");
+            navigationItems[currentStepIndex].scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }
+        } else {
+          showMessage("You have arrived. Nicely done.", "success");
+          stopLocationTracking();
+        }
+
+        updateNavNow();
+      }
+
+      function getDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371e3;
+        const φ1 = (lat1 * Math.PI) / 180;
+        const φ2 = (lat2 * Math.PI) / 180;
+        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+        const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+
+        const a =
+          Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+          Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
+      }
+
+      function stopLocationTracking() {
+        if (watchId) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+        if (userLocationMarker) {
+          map.removeLayer(userLocationMarker);
+          userLocationMarker = null;
+        }
+        document.getElementById("locationStatus").classList.remove("active");
+        isNavigating = false;
+      }
+
+      function getCoordinatesFromInput(input) {
+        const lat = parseFloat(input.dataset.lat);
+        const lng = parseFloat(input.dataset.lng);
+
+        if (
+          input.dataset.address === input.value &&
+          Number.isFinite(lat) &&
+          Number.isFinite(lng)
+        ) {
+          return { lat, lng };
+        }
+
+        return getCoordinates(input.value);
+      }
+
+      async function getCoordinates(address) {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}, NYC&format=json&limit=1&bounded=1&viewbox=-74.5,40.4,-73.7,40.9`,
+        );
+
+        if (!response.ok) throw new Error("Geocoding failed");
+        const data = await response.json();
+        if (!data || data.length === 0) throw new Error("Location not found");
+
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+
+      /*
+       * The keyless fallback path has to anchor its window the same way the
+       * proxy does, or a static deployment scores against an empty stretch of
+       * calendar and reports no incidents anywhere.
+       */
+      async function directWindow() {
+        const response = await fetch(
+          "https://data.cityofnewyork.us/resource/5uac-w243.json" +
+            "?$select=max(cmplnt_fr_dt)",
+        );
+        let latest = new Date().toISOString().slice(0, 10);
+        if (response.ok) {
+          const rows = await response.json();
+          const raw = rows && rows[0] && rows[0].max_cmplnt_fr_dt;
+          if (typeof raw === "string" && raw.length >= 10) latest = raw.slice(0, 10);
+        }
+        const latestMs = new Date(`${latest}T00:00:00`).getTime();
+        return {
+          since: new Date(latestMs - 45 * 86400000).toISOString().slice(0, 10),
+          referenceMs: latestMs,
+          windowDays: 45,
+        };
+      }
+
+      async function visualizeCrimeData(coordinates) {
+        try {
+          crimeLayer.clearLayers();
+
+          // Calculate bounding box around the route
+          const lats = coordinates.map((coord) => coord[1]);
+          const lngs = coordinates.map((coord) => coord[0]);
+          const minLat = Math.min(...lats) - 0.01;
+          const maxLat = Math.max(...lats) + 0.01;
+          const minLng = Math.min(...lngs) - 0.01;
+          const maxLng = Math.max(...lngs) + 0.01;
+
+          // Load crime data from NYC Open Data (try local proxy first, fallback to direct SODA API)
+          let crimes = [];
+          let fetchSuccess = false;
+
+          try {
+            // Same origin, whatever port or host this is served from. The
+            // old hardcoded localhost:3001 meant the proxy was silently
+            // skipped anywhere else, quietly falling back to the slower,
+            // uncached direct API.
+            const localUrl = `/api/nyc-crime/area?north=${maxLat}&south=${minLat}&east=${maxLng}&west=${minLng}`;
+            const proxyResponse = await fetch(localUrl);
+            if (proxyResponse.ok) {
+              const result = await proxyResponse.json();
+              if (result.success && result.data) {
+                // Keep every field the safety model weighs on. The hour of
+                // day and whether it happened indoors were previously fetched
+                // and then dropped here, which is most of what makes a score
+                // mean anything.
+                crimes = result.data.map((c) => ({
+                  latitude: c.lat,
+                  longitude: c.lng,
+                  ofns_desc: c.type,
+                  pd_desc: c.detail || c.type,
+                  cmplnt_fr_dt: c.date,
+                  cmplnt_fr_tm: c.time,
+                  lawCat: c.lawCat,
+                  where: c.where,
+                  premises: c.premises,
+                  completed: c.completed,
+                  severity: c.severity,
+                }));
+                if (Number.isFinite(result.referenceMs)) {
+                  crimeReferenceMs = result.referenceMs;
+                }
+                if (Number.isFinite(result.windowDays)) {
+                  crimeWindowDays = result.windowDays;
+                }
+                fetchSuccess = true;
+                console.log(`Fetched ${crimes.length} crimes from local proxy`);
+              }
+            }
+          } catch (e) {
+            console.log(
+              "Local proxy fetch failed, falling back to direct SODA API:",
+              e,
+            );
+          }
+
+          if (!fetchSuccess) {
+            const window = await directWindow();
+            crimeReferenceMs = window.referenceMs;
+            crimeWindowDays = window.windowDays;
+            const params = new URLSearchParams({
+              $select:
+                "ofns_desc,pd_desc,law_cat_cd,cmplnt_fr_dt,cmplnt_fr_tm," +
+                "latitude,longitude,loc_of_occur_desc,prem_typ_desc,crm_atpt_cptd_cd",
+              $where:
+                `latitude between ${minLat} and ${maxLat}` +
+                ` and longitude between ${minLng} and ${maxLng}` +
+                ` and cmplnt_fr_dt >= '${window.since}T00:00:00'`,
+              $limit: "3000",
+              $order: "cmplnt_fr_dt DESC",
+            });
+            const response = await fetch(
+              `https://data.cityofnewyork.us/resource/5uac-w243.json?${params}`,
+            );
+            if (!response.ok)
+              throw new Error("Failed to fetch crime data from direct API");
+            crimes = (await response.json()).map((c) => ({
+              ...c,
+              lawCat: c.law_cat_cd,
+              where: c.loc_of_occur_desc,
+              premises: c.prem_typ_desc,
+              completed: c.crm_atpt_cptd_cd,
+            }));
+            console.log(`Fetched ${crimes.length} crimes from direct SODA API`);
+          }
+
+          /*
+           * If the feed gives us nothing, say so. The previous behaviour was
+           * to invent plausible incidents and plot them as if they were real,
+           * which is the one thing a safety app must never do.
+           */
+          crimeDataAvailable = Boolean(crimes && crimes.length);
+          if (!crimeDataAvailable) {
+            showMessage(
+              "No incident data available right now, so routes are not scored.",
+              "error",
+            );
+            return [];
+          }
+
+          // Plot only what sits along the corridor being walked, most
+          // serious first, so the map stays readable at any zoom.
+          const corridor = coordinates.map((coord) => [coord[1], coord[0]]);
+          let plotted = 0;
+          const plottable = crimes
+            .filter((crime) => {
+              const lat = parseFloat(crime.latitude);
+              const lng = parseFloat(crime.longitude);
+              if (isNaN(lat) || isNaN(lng)) return false;
+              return getMinDistanceToRoute(lat, lng, corridor) < 0.0025;
+            })
+            .sort(
+              (a, b) => offenceWeight(b.ofns_desc) - offenceWeight(a.ofns_desc),
+            );
+
+          plottable.forEach((crime) => {
+            if (plotted >= 300) return;
+            plotted++;
+
+            const crimeLat = parseFloat(crime.latitude);
+            const crimeLng = parseFloat(crime.longitude);
+
+            const crimeType = (crime.ofns_desc || "").toLowerCase();
+            let color = "#ef8a1a"; // Default to medium risk
+            let severity = "medium";
+
+            // Categorize crime types
+            if (
+              crimeType.includes("assault") ||
+              crimeType.includes("robbery") ||
+              crimeType.includes("rape") ||
+              crimeType.includes("murder")
+            ) {
+              color = "#d93a30"; // High risk
+              severity = "high";
+            } else if (
+              crimeType.includes("theft") ||
+              crimeType.includes("burglary") ||
+              crimeType.includes("larceny")
+            ) {
+              color = "#ef8a1a"; // Medium risk
+              severity = "medium";
+            } else {
+              color = "#e0b429"; // Low risk
+              severity = "low";
+            }
+
+            // Create a marker for the crime
+            const marker = L.circleMarker([crimeLat, crimeLng], {
+              radius: 4,
+              fillColor: color,
+              color: "#fff",
+              weight: 1.2,
+              opacity: 0.9,
+              fillOpacity: 0.75,
+            }).addTo(crimeLayer);
+
+            // Add popup with crime details
+            const crimeDate = crime.cmplnt_fr_dt
+              ? new Date(crime.cmplnt_fr_dt).toLocaleDateString()
+              : "Unknown date";
+            marker.bindPopup(`
+                        <div class="map-popup">
+                            <h4 class="map-popup-title">${crime.ofns_desc || "Crime Report"}</h4>
+                            <div class="map-popup-body with-spacing">
+                                <div><strong>Type:</strong> ${crime.pd_desc || "N/A"}</div>
+                                <div><strong>Date:</strong> ${crimeDate}</div>
+                                <div><strong>Severity:</strong> <span class="severity-label ${severity}">${severity.charAt(0).toUpperCase() + severity.slice(1)}</span></div>
+                            </div>
+                        </div>
+                    `);
+          });
+
+          // Return processed crime data for safety scoring
+          return crimes;
+        } catch (error) {
+          console.error("Error visualizing crime data:", error);
+          crimeDataAvailable = false;
+          showMessage(
+            "Couldn't reach the incident feed, so routes aren't scored right now.",
+            "error",
+          );
+          return [];
+        }
+      }
+
+      /* =====================================================================
+       * Getting going, and getting help
+       * ===================================================================== */
+
+      // Typing out where you are standing is silly on a phone.
+      async function useMyLocation() {
+        const input = document.getElementById("startAddress");
+        if (!navigator.geolocation || !input) {
+          showMessage("Your browser will not share a location.", "error");
+          return;
+        }
+
+        const button = document.querySelector(".locate-btn");
+        button?.classList.add("busy");
+        input.placeholder = "Finding you...";
+
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            input.dataset.lat = latitude;
+            input.dataset.lng = longitude;
+            input.value = "My location";
+            input.dataset.address = input.value;
+
+            try {
+              const response = await fetch(
+                "https://nominatim.openstreetmap.org/reverse?format=json" +
+                  `&lat=${latitude}&lon=${longitude}&zoom=18`,
+              );
+              if (response.ok) {
+                const place = await response.json();
+                if (place.display_name) {
+                  input.value = place.display_name
+                    .split(",")
+                    .slice(0, 3)
+                    .join(",");
+                  input.dataset.address = input.value;
+                }
+              }
+            } catch (error) {
+              // The coordinates are what matter; the name is a nicety.
+              console.warn("Could not name your location:", error);
+            }
+
+            button?.classList.remove("busy");
+            input.placeholder = "Times Square";
+            map.setView([latitude, longitude], 15);
+          },
+          (error) => {
+            console.warn("Geolocation failed:", error);
+            button?.classList.remove("busy");
+            input.placeholder = "Times Square";
+            showMessage(
+              "Could not get your location. Check location permissions.",
+              "error",
+            );
+          },
+          { enableHighAccuracy: true, timeout: 10000 },
+        );
+      }
+
+      // Point me at the nearest place that is open and staffed, right now.
+      async function goToNearestHaven() {
+        await loadSafeHavens();
+        if (!safeHavens.length) {
+          showMessage("Safe place list is not loaded.", "error");
+          return;
+        }
+
+        const from = userLocationMarker
+          ? userLocationMarker.getLatLng()
+          : map.getCenter();
+        const found = nearestHaven(from.lat, from.lng);
+        if (!found) return;
+
+        const kind = HAVEN_KINDS[found.haven.t] || HAVEN_KINDS.police;
+        const minutes = Math.max(1, walkMinutes(found.distance));
+        map.setView([found.haven.y, found.haven.x], 17);
+        havenMarker(found.haven).addTo(havenLayer).openPopup();
+        showMessage(
+          `${kind.label}: ${found.haven.n}, about ${minutes} min away.`,
+          "success",
+        );
+      }
+
+      // Tell someone where you are going and when you should be there.
+      async function shareWalk() {
+        const destination =
+          document.getElementById("endAddress")?.value || "my destination";
+        const active = allRoutes[activeRouteIndex];
+        const minutes = active ? routeMinutes(active.route) : null;
+
+        const text = minutes
+          ? `Walking to ${destination}. Should arrive about ${arrivalTime(minutes)}.`
+          : `Walking to ${destination}.`;
+
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: "My walk", text });
+            return;
+          }
+          await navigator.clipboard.writeText(text);
+          showMessage("Copied, ready to send to someone.", "success");
+        } catch (error) {
+          if (error && error.name === "AbortError") return;
+          showMessage(text, "info");
+        }
+      }
+
+      /* --- Night mode ------------------------------------------------------
+       * Most of these walks happen after dark, and a page this bright is
+       * genuinely unpleasant at that hour. Follows the clock unless you say
+       * otherwise.
+       */
+      function applyTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        const button = document.querySelector(".theme-btn");
+        if (button) {
+          button.setAttribute(
+            "aria-label",
+            theme === "dark" ? "Switch to day colours" : "Switch to night colours",
+          );
+          button.setAttribute("aria-pressed", String(theme === "dark"));
+        }
+      }
+
+      function currentTheme() {
+        return document.documentElement.getAttribute("data-theme") || "light";
+      }
+
+      function toggleTheme() {
+        const next = currentTheme() === "dark" ? "light" : "dark";
+        applyTheme(next);
+        try {
+          localStorage.setItem("safewalk-theme", next);
+        } catch (error) {
+          // Private browsing; the choice just will not persist.
+        }
+      }
+
+      function initTheme() {
+        let saved = null;
+        try {
+          saved = localStorage.getItem("safewalk-theme");
+        } catch (error) {
+          saved = null;
+        }
+        applyTheme(saved || (isAfterDark(new Date().getHours()) ? "dark" : "light"));
+      }
+
+      /* --- Departure time -------------------------------------------------- */
+
+      function setDeparture(choice) {
+        departureChoice = choice;
+
+        document.querySelectorAll(".when-chip").forEach((chip) => {
+          const active = chip.dataset.when === choice;
+          chip.classList.toggle("active", active);
+          chip.setAttribute("aria-pressed", String(active));
+        });
+
+        const custom = document.getElementById("customTime");
+        const isCustom = choice !== "now" && choice !== "night";
+        // Keep the visible clock and the hour we score with in step.
+        if (isCustom && custom && custom.value !== choice) custom.value = choice;
+        document
+          .querySelector(".when-chip[data-when='custom']")
+          ?.classList.toggle("active", isCustom);
+        if (custom) custom.hidden = !isCustom;
+
+        updateDepartureHint();
+
+        // Re-score what is already on screen against the new hour.
+        if (allRoutes.length && currentCrimeData.length) {
+          allRoutes.forEach((entry) => {
+            entry.safetyData = calculateSafetyScore(
+              currentCrimeData,
+              entry.coords,
+              departureHour(),
+            );
+          });
+          renderRouteSelector();
+          const active = allRoutes[activeRouteIndex];
+          if (active) updateRouteInfo(active.route, active.safetyData);
+        }
+      }
+
+      function updateDepartureHint() {
+        const hint = document.getElementById("whenHint");
+        if (!hint) return;
+        const when = departureDate();
+        const hour = when.getHours();
+        hint.textContent = isAfterDark(hour)
+          ? `Scored for ${formatClock(when)} — after dark, fewer people about`
+          : `Scored for a walk at ${formatClock(when)}`;
+      }
+
+      // Initialize the map when the page loads
+      document.addEventListener("DOMContentLoaded", function () {
+        // Initialize the map
+        initTheme();
+
+        if (typeof L !== "undefined") {
+          initMap();
+
+          // Add click handler for the close navigation button
+          document
+            .querySelector(".close-nav")
+            ?.addEventListener("click", resetView);
+
+          // Add click handler for the route button
+          document
+            .querySelector(".route-btn")
+            ?.addEventListener("click", findRoute);
+
+          // Add click handler for the collapse directions button
+          document
+            .querySelector(".collapse-nav")
+            ?.addEventListener("click", toggleNavCollapse);
+
+          setupAddressAutocomplete("startAddress", "startSuggestions");
+          setupAddressAutocomplete("endAddress", "endSuggestions");
+
+          document
+            .querySelector(".locate-btn")
+            ?.addEventListener("click", useMyLocation);
+          document
+            .querySelector(".theme-btn")
+            ?.addEventListener("click", toggleTheme);
+          document
+            .querySelector(".haven-btn")
+            ?.addEventListener("click", goToNearestHaven);
+          document
+            .querySelector(".share-btn")
+            ?.addEventListener("click", shareWalk);
+          document
+            .querySelector(".recenter-btn")
+            ?.addEventListener("click", recenterOnUser);
+
+          document.querySelectorAll(".when-chip").forEach((chip) => {
+            chip.addEventListener("click", () => {
+              const choice = chip.dataset.when;
+              if (choice === "custom") {
+                const custom = document.getElementById("customTime");
+                if (custom) {
+                  custom.hidden = false;
+                  custom.focus();
+                  setDeparture(custom.value || "22:00");
+                }
+                return;
+              }
+              setDeparture(choice);
+            });
+          });
+
+          document
+            .getElementById("customTime")
+            ?.addEventListener("change", (event) => {
+              if (event.target.value) setDeparture(event.target.value);
+            });
+
+          setDeparture("now");
+
+          setTimeout(() => {
+            showMessage(
+              "Tell us where you are going, and when, and we will compare the ways there.",
+              "info",
+            );
+          }, 1000);
+        } else {
+          console.error("Leaflet library failed to load");
+          showMessage(
+            "Error: Map functionality not available. Please try refreshing the page.",
+            "error",
+          );
+        }
+      });
+
+      // Expose functions to the global scope for HTML event handlers
+      window.findRoute = findRoute;
+      window.resetView = resetView;
+      function toggleNavCollapse() {
+        const nav = document.querySelector(".navigation-panel");
+        if (!nav) return;
+        // The chevron itself is drawn in CSS and rotates off `.collapsed`.
+        const isCollapsed = nav.classList.toggle("collapsed");
+        document
+          .querySelector(".collapse-nav")
+          ?.setAttribute(
+            "aria-label",
+            isCollapsed ? "Expand directions" : "Collapse directions",
+          );
+      }
+      window.toggleNavCollapse = toggleNavCollapse;
+    </script>
+  </body>
+</html>

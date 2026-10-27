@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "SafeWalkNYC",
+    "slug": "safewalknyc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "platforms": ["ios", "android", "web"]
+  },
+  "name": "SafeWalkNYC",
+  "displayName": "SafeWalkNYC"
+}

@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Paste into Firebase console > Firestore > Rules, or deploy with the Firebase CLI.
+// Anyone signed in (anonymously) can read reports, add one for New York City
+// that expires within three days, and delete only their own. No edits.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /reports/{id} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['kind', 'lat', 'lng', 'note', 'createdAt', 'expiresAt', 'uid'])
+        && request.resource.data.keys().hasAll(['kind', 'lat', 'lng', 'createdAt', 'expiresAt', 'uid'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind in ['blockage', 'traffic', 'event', 'lighting', 'unsafe', 'other']
+        && request.resource.data.lat is number
+        && request.resource.data.lat > 40.4 && request.resource.data.lat < 41.0
+        && request.resource.data.lng is number
+        && request.resource.data.lng > -74.3 && request.resource.data.lng < -73.6
+        && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 140))
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.createdAt > request.time - duration.value(2, 'm')
+        && request.resource.data.createdAt < request.time + duration.value(2, 'm')
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(3, 'd');
+
+      allow update: if false;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+  }
+}

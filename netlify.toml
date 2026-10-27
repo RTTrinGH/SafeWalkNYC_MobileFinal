@@ -1,0 +1,14 @@
+[build]
+  base = "/"
+  publish = "public"
+  command = "mkdir -p public && cp index.html styles.css public/ && cp -r data public/"
+
+[dev]
+  command = "npm start"
+  port = 19006  # Default Expo web port
+  publish = "public"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
